@@ -4,7 +4,6 @@ mode: rule
 log-level: info
 
 external-controller: 127.0.0.1:9090
-
 ipv6: false
 
 dns:
@@ -12,7 +11,6 @@ dns:
   listen: 0.0.0.0:1055
   ipv6: false
   enhanced-mode: fake-ip
-
   fake-ip-range: 198.18.0.1/16
 
   nameserver:
@@ -26,11 +24,14 @@ dns:
   fallback-filter:
     geoip: true
     geoip-code: CN
-    ipcidr:
-      - 240.0.0.0/4
+
+  fake-ip-filter:
+    - "*.youtube.com"
+    - "*.googlevideo.com"
+    - "*.tiktok.com"
 
 proxies:
-  - name: US-Reality
+  - name: US-Reality-1
     type: vless
     server: 167.71.19.133
     port: 443
@@ -47,40 +48,92 @@ proxies:
     client-fingerprint: chrome
 
 proxy-groups:
+  # 🎯 主入口
   - name: PROXY
     type: select
     proxies:
-      - US-Reality
+      - AUTO
+      - FALLBACK
+      - US-Reality-1
       - DIRECT
 
+  # ⚡ 自动测速
   - name: AUTO
     type: url-test
     proxies:
-      - US-Reality
+      - US-Reality-1
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+
+  # 🛟 故障切换
+  - name: FALLBACK
+    type: fallback
+    proxies:
+      - US-Reality-1
     url: http://www.gstatic.com/generate_204
     interval: 300
 
+  # 🌍 国外流量
+  - name: GLOBAL
+    type: select
+    proxies:
+      - PROXY
+      - FALLBACK
+      - DIRECT
+
+  # 🎬 视频播放
+  - name: MEDIA
+    type: select
+    proxies:
+      - PROXY
+      - FALLBACK
+      - DIRECT
+
+  # ⬆️ YouTube 上传专用（核心优化）
+  - name: UPLOAD
+    type: select
+    proxies:
+      - US-Reality-1
+
 rules:
-  # 本地网络
+  # 内网直连
   - IP-CIDR,127.0.0.0/8,DIRECT
   - IP-CIDR,192.168.0.0/16,DIRECT
   - IP-CIDR,10.0.0.0/8,DIRECT
   - IP-CIDR,172.16.0.0/12,DIRECT
 
-  # 国内常用（优先命中，避免 DNS 误判）
+  # 国内服务直连
   - DOMAIN-SUFFIX,baidu.com,DIRECT
   - DOMAIN-SUFFIX,bilibili.com,DIRECT
   - DOMAIN-SUFFIX,qq.com,DIRECT
   - DOMAIN-SUFFIX,taobao.com,DIRECT
-  - DOMAIN-SUFFIX,tmall.com,DIRECT
   - DOMAIN-SUFFIX,jd.com,DIRECT
   - DOMAIN-SUFFIX,zhihu.com,DIRECT
   - DOMAIN-SUFFIX,weibo.com,DIRECT
   - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
   - DOMAIN-SUFFIX,zijieapi.com,DIRECT
 
-  # 中国 IP
+  # 🎬 YouTube 播放
+  - DOMAIN-SUFFIX,youtube.com,MEDIA
+  - DOMAIN-SUFFIX,ytimg.com,MEDIA
+  - DOMAIN-SUFFIX,googlevideo.com,MEDIA
+
+  # 🎬 TikTok
+  - DOMAIN-SUFFIX,tiktok.com,MEDIA
+  - DOMAIN-SUFFIX,tiktokcdn.com,MEDIA
+  - DOMAIN-SUFFIX,byteoversea.com,MEDIA
+
+  # ⬆️ YouTube 上传（核心优化）
+  - DOMAIN-SUFFIX,googlevideo.com,UPLOAD
+  - DOMAIN-SUFFIX,upload.youtube.com,UPLOAD
+
+  # 国外服务
+  - DOMAIN-SUFFIX,google.com,GLOBAL
+  - DOMAIN-SUFFIX,github.com,GLOBAL
+
+  # 中国IP直连
   - GEOIP,CN,DIRECT
 
-  # 默认代理
-  - MATCH,PROXY
+  # 默认
+  - MATCH,GLOBAL
