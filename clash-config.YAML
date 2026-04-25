@@ -1,0 +1,86 @@
+mixed-port: 7890
+allow-lan: true
+mode: rule
+log-level: info
+
+external-controller: 127.0.0.1:9090
+
+ipv6: false
+
+dns:
+  enable: true
+  listen: 0.0.0.0:1055
+  ipv6: false
+  enhanced-mode: fake-ip
+
+  fake-ip-range: 198.18.0.1/16
+
+  nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+
+  fallback:
+    - tls://1.1.1.1
+    - tls://8.8.8.8
+
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+
+proxies:
+  - name: US-Reality
+    type: vless
+    server: 167.71.19.133
+    port: 443
+    uuid: 745b437c-8cbc-4caa-b960-82c408c49b39
+    network: tcp
+    tls: true
+    servername: www.cloudflare.com
+    skip-cert-verify: true
+
+    reality-opts:
+      public-key: 3YLXkP-hXB4Qr_2ag7qIF9hNnZ4w6LUI0XkIshB4M0U
+      short-id: a1b2c3d4
+
+    client-fingerprint: chrome
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - US-Reality
+      - DIRECT
+
+  - name: AUTO
+    type: url-test
+    proxies:
+      - US-Reality
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+
+rules:
+  # 本地网络
+  - IP-CIDR,127.0.0.0/8,DIRECT
+  - IP-CIDR,192.168.0.0/16,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT
+  - IP-CIDR,172.16.0.0/12,DIRECT
+
+  # 国内常用（优先命中，避免 DNS 误判）
+  - DOMAIN-SUFFIX,baidu.com,DIRECT
+  - DOMAIN-SUFFIX,bilibili.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com,DIRECT
+  - DOMAIN-SUFFIX,taobao.com,DIRECT
+  - DOMAIN-SUFFIX,tmall.com,DIRECT
+  - DOMAIN-SUFFIX,jd.com,DIRECT
+  - DOMAIN-SUFFIX,zhihu.com,DIRECT
+  - DOMAIN-SUFFIX,weibo.com,DIRECT
+  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
+  - DOMAIN-SUFFIX,zijieapi.com,DIRECT
+
+  # 中国 IP
+  - GEOIP,CN,DIRECT
+
+  # 默认代理
+  - MATCH,PROXY
