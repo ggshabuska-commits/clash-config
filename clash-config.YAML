@@ -16,10 +16,6 @@ dns:
     - 1.1.1.1
     - 8.8.8.8
 
-  fake-ip-filter:
-    - "*.googlevideo.com"
-    - "*.youtube.com"
-    - "*.ytimg.com"
 
 proxies:
   - name: NY-VPS
@@ -41,14 +37,12 @@ proxies:
 
 proxy-groups:
 
-  # 🔵 主出口（唯一传输层）
   - name: PROXY
     type: select
     proxies:
       - NY-VPS
       - DIRECT
 
-  # 🎬 上传专用组（关键）
   - name: UPLOAD
     type: select
     proxies:
@@ -57,22 +51,22 @@ proxy-groups:
 
 rules:
 
-  # 本地直连
+  # 本地
   - IP-CIDR,127.0.0.0/8,DIRECT
   - IP-CIDR,192.168.0.0/16,DIRECT
   - IP-CIDR,10.0.0.0/8,DIRECT
 
-  # 🇨🇳 国内直连
+  # 中国直连
   - GEOIP,CN,DIRECT
 
-  # 🎬 YouTube上传（核心优化）
+  # 🎬 YouTube上传
   - DOMAIN-SUFFIX,googlevideo.com,UPLOAD
   - DOMAIN-SUFFIX,youtube.com,UPLOAD
   - DOMAIN-SUFFIX,ytimg.com,UPLOAD
 
-  # 🌍 Google服务
+  # Google服务
   - DOMAIN-SUFFIX,google.com,PROXY
   - DOMAIN-SUFFIX,googleapis.com,PROXY
 
-  # 🧭 默认全部走纽约
+  # 默认
   - MATCH,PROXY
