@@ -11,129 +11,68 @@ dns:
   listen: 0.0.0.0:1055
   ipv6: false
   enhanced-mode: fake-ip
-  fake-ip-range: 198.18.0.1/16
 
   nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-
-  fallback:
-    - tls://1.1.1.1
-    - tls://8.8.8.8
-
-  fallback-filter:
-    geoip: true
-    geoip-code: CN
+    - 1.1.1.1
+    - 8.8.8.8
 
   fake-ip-filter:
-    - "*.youtube.com"
     - "*.googlevideo.com"
-    - "*.tiktok.com"
+    - "*.youtube.com"
+    - "*.ytimg.com"
 
 proxies:
-  - name: US-Reality-1
+  - name: NY-VPS
     type: vless
-    server: 167.71.19.133
+    server: YOUR_NY_IP
     port: 443
-    uuid: 745b437c-8cbc-4caa-b960-82c408c49b39
+    uuid: YOUR_UUID
     network: tcp
     tls: true
     servername: www.cloudflare.com
     skip-cert-verify: true
 
     reality-opts:
-      public-key: 3YLXkP-hXB4Qr_2ag7qIF9hNnZ4w6LUI0XkIshB4M0U
+      public-key: YOUR_PUBLIC_KEY
       short-id: a1b2c3d4
 
     client-fingerprint: chrome
 
+
 proxy-groups:
-  # 🎯 主入口
+
+  # 🔵 主出口（唯一传输层）
   - name: PROXY
     type: select
     proxies:
-      - AUTO
-      - FALLBACK
-      - US-Reality-1
+      - NY-VPS
       - DIRECT
 
-  # ⚡ 自动测速
-  - name: AUTO
-    type: url-test
-    proxies:
-      - US-Reality-1
-    url: http://www.gstatic.com/generate_204
-    interval: 300
-    tolerance: 50
-
-  # 🛟 故障切换
-  - name: FALLBACK
-    type: fallback
-    proxies:
-      - US-Reality-1
-    url: http://www.gstatic.com/generate_204
-    interval: 300
-
-  # 🌍 国外流量
-  - name: GLOBAL
-    type: select
-    proxies:
-      - PROXY
-      - FALLBACK
-      - DIRECT
-
-  # 🎬 视频播放
-  - name: MEDIA
-    type: select
-    proxies:
-      - PROXY
-      - FALLBACK
-      - DIRECT
-
-  # ⬆️ YouTube 上传专用（核心优化）
+  # 🎬 上传专用组（关键）
   - name: UPLOAD
     type: select
     proxies:
-      - US-Reality-1
+      - NY-VPS
+
 
 rules:
-  # 内网直连
+
+  # 本地直连
   - IP-CIDR,127.0.0.0/8,DIRECT
   - IP-CIDR,192.168.0.0/16,DIRECT
   - IP-CIDR,10.0.0.0/8,DIRECT
-  - IP-CIDR,172.16.0.0/12,DIRECT
 
-  # 国内服务直连
-  - DOMAIN-SUFFIX,baidu.com,DIRECT
-  - DOMAIN-SUFFIX,bilibili.com,DIRECT
-  - DOMAIN-SUFFIX,qq.com,DIRECT
-  - DOMAIN-SUFFIX,taobao.com,DIRECT
-  - DOMAIN-SUFFIX,jd.com,DIRECT
-  - DOMAIN-SUFFIX,zhihu.com,DIRECT
-  - DOMAIN-SUFFIX,weibo.com,DIRECT
-  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
-  - DOMAIN-SUFFIX,zijieapi.com,DIRECT
-
-  # 🎬 YouTube 播放
-  - DOMAIN-SUFFIX,youtube.com,MEDIA
-  - DOMAIN-SUFFIX,ytimg.com,MEDIA
-  - DOMAIN-SUFFIX,googlevideo.com,MEDIA
-
-  # 🎬 TikTok
-  - DOMAIN-SUFFIX,tiktok.com,MEDIA
-  - DOMAIN-SUFFIX,tiktokcdn.com,MEDIA
-  - DOMAIN-SUFFIX,byteoversea.com,MEDIA
-
-  # ⬆️ YouTube 上传（核心优化）
-  - DOMAIN-SUFFIX,googlevideo.com,UPLOAD
-  - DOMAIN-SUFFIX,upload.youtube.com,UPLOAD
-
-  # 国外服务
-  - DOMAIN-SUFFIX,google.com,GLOBAL
-  - DOMAIN-SUFFIX,github.com,GLOBAL
-
-  # 中国IP直连
+  # 🇨🇳 国内直连
   - GEOIP,CN,DIRECT
 
-  # 默认
-  - MATCH,GLOBAL
+  # 🎬 YouTube上传（核心优化）
+  - DOMAIN-SUFFIX,googlevideo.com,UPLOAD
+  - DOMAIN-SUFFIX,youtube.com,UPLOAD
+  - DOMAIN-SUFFIX,ytimg.com,UPLOAD
+
+  # 🌍 Google服务
+  - DOMAIN-SUFFIX,google.com,PROXY
+  - DOMAIN-SUFFIX,googleapis.com,PROXY
+
+  # 🧭 默认全部走纽约
+  - MATCH,PROXY
