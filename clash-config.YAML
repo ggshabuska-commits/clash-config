@@ -1,35 +1,77 @@
-mixed-port: 7890
-allow-lan: true
 mode: rule
+mixed-port: 7897
+allow-lan: false
 log-level: info
+ipv6: false
 
 external-controller: 127.0.0.1:9090
-ipv6: false
+secret: set-your-secret
+unified-delay: true
+
+external-controller-cors:
+  allow-private-network: true
+  allow-origins:
+    - tauri://localhost
+    - http://tauri.localhost
+    - https://yacd.metacubex.one
+    - https://metacubex.github.io
+    - https://board.zash.run.place
 
 dns:
   enable: true
   listen: 0.0.0.0:1055
   ipv6: false
   enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
 
   nameserver:
-    - 1.1.1.1
-    - 8.8.8.8
+    - 223.5.5.5
+    - 119.29.29.29
+
+  fallback:
+    - tls://1.1.1.1
+    - tls://8.8.8.8
+
+  fallback-filter:
+    geoip: true
+    geoip-code: CN
+
+  fake-ip-filter:
+    - "*.youtube.com"
+    - "*.googlevideo.com"
+    - "*.tiktok.com"
+
+
+profile:
+  store-selected: true
+
+external-controller-pipe: \\.\pipe\verge-mihomo
+
+
+tun:
+  enable: false
+  stack: gvisor
+  auto-route: true
+  strict-route: false
+  auto-detect-interface: true
+  dns-hijack:
+    - any:53
 
 
 proxies:
-  - name: NY-VPS
+
+  - name: NY-Reality
     type: vless
-    server: YOUR_NY_IP
+    server: 167.71.19.133
     port: 443
-    uuid: YOUR_UUID
+    uuid: 745b437c-8cbc-4caa-b960-82c408c49b39
     network: tcp
     tls: true
     servername: www.cloudflare.com
     skip-cert-verify: true
 
     reality-opts:
-      public-key: YOUR_PUBLIC_KEY
+      public-key: 3YLXkP-hXB4Qr_2ag7qIF9hNnZ4w6LUI0XkIshB4M0U
       short-id: a1b2c3d4
 
     client-fingerprint: chrome
@@ -37,16 +79,42 @@ proxies:
 
 proxy-groups:
 
+  # 🌍 主出口（所有非上传流量）
   - name: PROXY
     type: select
     proxies:
-      - NY-VPS
+      - NY-Reality
       - DIRECT
 
+  # ⚡ 自动测速（备用）
+  - name: AUTO
+    type: url-test
+    proxies:
+      - NY-Reality
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+
+  # 🔄 备用
+  - name: FALLBACK
+    type: fallback
+    proxies:
+      - NY-Reality
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+
+  # 🎬 YouTube播放
+  - name: MEDIA
+    type: select
+    proxies:
+      - PROXY
+      - DIRECT
+
+  # 🚀 上传专用（关键）
   - name: UPLOAD
     type: select
     proxies:
-      - NY-VPS
+      - NY-Reality
 
 
 rules:
@@ -55,18 +123,37 @@ rules:
   - IP-CIDR,127.0.0.0/8,DIRECT
   - IP-CIDR,192.168.0.0/16,DIRECT
   - IP-CIDR,10.0.0.0/8,DIRECT
+  - IP-CIDR,172.16.0.0/12,DIRECT
 
-  # 中国直连
+  # 国内直连
   - GEOIP,CN,DIRECT
 
-  # 🎬 YouTube上传
-  - DOMAIN-SUFFIX,googlevideo.com,UPLOAD
-  - DOMAIN-SUFFIX,youtube.com,UPLOAD
-  - DOMAIN-SUFFIX,ytimg.com,UPLOAD
+  # 🇨🇳 国内网站
+  - DOMAIN-SUFFIX,baidu.com,DIRECT
+  - DOMAIN-SUFFIX,bilibili.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com,DIRECT
+  - DOMAIN-SUFFIX,taobao.com,DIRECT
+  - DOMAIN-SUFFIX,jd.com,DIRECT
+  - DOMAIN-SUFFIX,zhihu.com,DIRECT
+  - DOMAIN-SUFFIX,weibo.com,DIRECT
+  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
+  - DOMAIN-SUFFIX,zijieapi.com,DIRECT
 
-  # Google服务
+  # 🎬 上传（最高优先级）
+  - DOMAIN-SUFFIX,googlevideo.com,UPLOAD
+  - DOMAIN-SUFFIX,upload.youtube.com,UPLOAD
+
+  # 🎬 YouTube播放
+  - DOMAIN-SUFFIX,youtube.com,MEDIA
+  - DOMAIN-SUFFIX,ytimg.com,MEDIA
+  - DOMAIN-SUFFIX,tiktok.com,MEDIA
+  - DOMAIN-SUFFIX,tiktokcdn.com,MEDIA
+  - DOMAIN-SUFFIX,byteoversea.com,MEDIA
+
+  # 🌍 Google
   - DOMAIN-SUFFIX,google.com,PROXY
   - DOMAIN-SUFFIX,googleapis.com,PROXY
+  - DOMAIN-SUFFIX,github.com,PROXY
 
-  # 默认
+  # 默认全部走纽约
   - MATCH,PROXY
